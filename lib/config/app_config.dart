@@ -126,5 +126,37 @@ class AppConfig {
     }
     return '${seconds}s';
   }
+
+  /// Generates the canonical web invite link for a Space.
+  static String buildInviteLink(String inviteCode) =>
+      'https://lunchledger.app/join?code=$inviteCode';
+
+  /// Generates a friendly share message including the custom link and fallback instructions.
+  static String buildShareMessage({
+    required String spaceName,
+    required String inviteCode,
+  }) {
+    final link = buildInviteLink(inviteCode);
+    return '🍱 Join our lunch space "$spaceName" on Lunch Ledger!\n\n'
+        'Tap the link to join directly:\n$link\n\n'
+        'Or enter invite code in the app: $inviteCode';
+  }
+
+  /// Extracts a 6-digit invite code from plain code, deep links, or shared URLs.
+  static String? extractInviteCode(String input) {
+    final trimmed = input.trim();
+    if (RegExp(r'^\d{6}$').hasMatch(trimmed)) {
+      return trimmed;
+    }
+    final match = RegExp(r'[?&]code=(\d{6})').firstMatch(trimmed);
+    if (match != null) {
+      return match.group(1);
+    }
+    final matchInText = RegExp(r'\b(\d{6})\b').firstMatch(trimmed);
+    if (matchInText != null) {
+      return matchInText.group(1);
+    }
+    return null;
+  }
 }
 

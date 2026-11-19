@@ -4,32 +4,45 @@ import '../config/app_config.dart';
 import '../models/space.dart';
 import '../theme/app_theme.dart';
 
-/// Displays the live countdown to the Space's daily order cut-off, or a clear
-/// warning banner when cut-off has passed (logging remains allowed).
+/// Displays the live countdown to the Space's daily order cut-off, with clear
+/// locked status for regular members and override status for Space Leaders.
 class CutoffCountdownBanner extends StatelessWidget {
   const CutoffCountdownBanner({
     super.key,
     required this.space,
     required this.now,
+    this.isLeader = false,
   });
 
   final Space space;
   final DateTime now;
+  final bool isLeader;
 
   @override
   Widget build(BuildContext context) {
     final isPast = space.isPastCutoffAt(now);
     final remaining = space.timeUntilCutoffAt(now);
 
-    final bgColor = isPast ? AppTheme.warningBg : AppTheme.fullSoft;
-    final borderColor = isPast ? AppTheme.warningBorder : const Color(0xFFB7E4CB);
-    final fgColor = isPast ? AppTheme.warningFg : AppTheme.fullColor;
+    final bgColor = isPast
+        ? (isLeader ? AppTheme.pendingSoft : const Color(0xFFFEF2F2))
+        : AppTheme.fullSoft;
+    final borderColor = isPast
+        ? (isLeader ? AppTheme.warningBorder : const Color(0xFFFECACA))
+        : const Color(0xFFB7E4CB);
+    final fgColor = isPast
+        ? (isLeader ? AppTheme.warningFg : const Color(0xFF991B1B))
+        : AppTheme.fullColor;
 
     final title = isPast
-        ? 'Past daily cut-off (${space.cutoffDisplay})'
+        ? (isLeader
+            ? 'Cut-off passed · Leader Override active'
+            : 'Order cut-off passed (${space.cutoffDisplay})')
         : 'Order window open · ${AppConfig.formatDurationCompact(remaining)} left';
+
     final subtitle = isPast
-        ? 'Logging is still allowed, please confirm late changes with your Leader.'
+        ? (isLeader
+            ? 'As Space Leader, you can still log or adjust meals past ${space.cutoffDisplay}.'
+            : 'Meals are locked for today. Contact your Space Leader for changes.')
         : 'Daily cut-off at ${space.cutoffDisplay}';
 
     return Container(
@@ -43,7 +56,9 @@ class CutoffCountdownBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isPast ? Icons.warning_amber_rounded : Icons.timer_outlined,
+            isPast
+                ? (isLeader ? Icons.shield_outlined : Icons.lock_clock_rounded)
+                : Icons.timer_outlined,
             color: fgColor,
             size: 22,
           ),
@@ -64,7 +79,7 @@ class CutoffCountdownBanner extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: fgColor.withValues(alpha: 0.9),
+                    color: fgColor.withAlpha(220),
                     fontSize: 12.5,
                   ),
                 ),
@@ -76,4 +91,3 @@ class CutoffCountdownBanner extends StatelessWidget {
     );
   }
 }
-

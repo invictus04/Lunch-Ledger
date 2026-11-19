@@ -19,22 +19,34 @@ class TiffinService {
     required String spaceId,
     required DateTime date,
     required TiffinType type,
+    String? menuItemId,
+    String? itemName,
   }) async {
     final dateKey = AppConfig.formatDateKey(date);
     try {
       return await AppLogger.traceAsync(
         _scope,
-        'upsertDailyLog(date=$dateKey, type=${type.dbValue})',
+        'upsertDailyLog(date=$dateKey, type=${type.dbValue}, menuItemId=$menuItemId)',
         () async {
+          final payload = <String, dynamic>{
+            'user_id': userId,
+            'space_id': spaceId,
+            'log_date': dateKey,
+            'type': type.dbValue,
+          };
+          if (menuItemId != null) {
+            payload['menu_item_id'] = menuItemId;
+          } else {
+            payload['menu_item_id'] = null;
+          }
+          if (itemName != null && itemName.trim().isNotEmpty) {
+            payload['item_name'] = itemName.trim();
+          }
+
           final row = await _client
               .from('tiffin_logs')
               .upsert(
-                {
-                  'user_id': userId,
-                  'space_id': spaceId,
-                  'log_date': dateKey,
-                  'type': type.dbValue,
-                },
+                payload,
                 onConflict: 'user_id,space_id,log_date',
               )
               .select()

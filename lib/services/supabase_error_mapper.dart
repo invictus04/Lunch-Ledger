@@ -29,6 +29,11 @@ class SupabaseErrorMapper {
 
     if (error is PostgrestException) {
       final raw = error.message.trim();
+      if (raw.contains('ORDER_CUTOFF_PASSED')) {
+        return const AppFailure(
+          "Today's order cut-off has passed. Meals are locked; please contact your Space Leader to log or make changes.",
+        );
+      }
       final idx = raw.indexOf(_cooldownPrefix);
       if (idx != -1) {
         final rawIso = raw.substring(idx + _cooldownPrefix.length).trim();

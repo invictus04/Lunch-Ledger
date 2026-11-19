@@ -17,7 +17,7 @@ class TiffinVisualStyle {
   final Color softBg;
   final IconData icon;
 
-  static TiffinVisualStyle of(TiffinType? type) {
+  static TiffinVisualStyle of(TiffinType? type, {String? customLabel}) {
     switch (type) {
       case TiffinType.full:
         return const TiffinVisualStyle(
@@ -39,6 +39,15 @@ class TiffinVisualStyle {
           color: AppTheme.skipColor,
           softBg: AppTheme.skipSoft,
           icon: Icons.do_not_disturb_on_outlined,
+        );
+      case TiffinType.custom:
+        return TiffinVisualStyle(
+          label: (customLabel != null && customLabel.trim().isNotEmpty)
+              ? customLabel.trim()
+              : 'Meal',
+          color: AppTheme.primary,
+          softBg: AppTheme.primarySoft,
+          icon: Icons.restaurant_menu_rounded,
         );
       case null:
         return const TiffinVisualStyle(

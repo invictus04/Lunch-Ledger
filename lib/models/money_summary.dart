@@ -9,6 +9,7 @@ class WeekBudgetRow {
     required this.fullCount,
     required this.halfCount,
     required this.skipCount,
+    this.customCount = 0,
     required this.actualSpend,
     required this.remainingWeekdays,
     required this.projectedAdditionalSpend,
@@ -20,6 +21,7 @@ class WeekBudgetRow {
   final int fullCount;
   final int halfCount;
   final int skipCount;
+  final int customCount;
   final double actualSpend;
   final int remainingWeekdays;
   final double projectedAdditionalSpend;
@@ -34,6 +36,7 @@ class MemberMonthlyTotal {
     required this.fullCount,
     required this.halfCount,
     required this.skipCount,
+    this.customCount = 0,
     required this.totalSpend,
   });
 
@@ -41,9 +44,10 @@ class MemberMonthlyTotal {
   final int fullCount;
   final int halfCount;
   final int skipCount;
+  final int customCount;
   final double totalSpend;
 
-  int get totalMeals => fullCount + halfCount;
+  int get totalMeals => fullCount + halfCount + customCount;
 }
 
 /// Complete monthly money summary for the Money tab.
@@ -57,6 +61,7 @@ class MonthlyBudgetSummary {
     required this.fullCount,
     required this.halfCount,
     required this.skipCount,
+    this.customCount = 0,
     required this.weeks,
     required this.memberBreakdown,
   });
@@ -69,6 +74,7 @@ class MonthlyBudgetSummary {
   final int fullCount;
   final int halfCount;
   final int skipCount;
+  final int customCount;
   final List<WeekBudgetRow> weeks;
   final List<MemberMonthlyTotal> memberBreakdown;
 

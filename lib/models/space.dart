@@ -48,6 +48,7 @@ class Space {
       case TiffinType.half:
         return priceHalf;
       case TiffinType.skip:
+      case TiffinType.custom:
         return 0;
     }
   }

@@ -33,6 +33,7 @@ class TiffinCalculator {
     var fullCount = 0;
     var halfCount = 0;
     var skipCount = 0;
+    var customCount = 0;
     var actualSpend = 0.0;
 
     for (final log in userLogs) {
@@ -44,6 +45,8 @@ class TiffinCalculator {
           halfCount++;
         case TiffinType.skip:
           skipCount++;
+        case TiffinType.custom:
+          customCount++;
       }
     }
 
@@ -57,7 +60,7 @@ class TiffinCalculator {
     // Use the user's average logged cost this month when they have at least one
     // paid meal; otherwise fall back to the Space's Full price.
     final estimatedDailyRate =
-        userLogs.isNotEmpty && (fullCount + halfCount) > 0
+        userLogs.isNotEmpty && (fullCount + halfCount + customCount) > 0
         ? actualSpend / userLogs.length
         : space.priceFull;
 
@@ -83,6 +86,7 @@ class TiffinCalculator {
       var weekFull = 0;
       var weekHalf = 0;
       var weekSkip = 0;
+      var weekCustom = 0;
       var weekActual = 0.0;
       var weekRemainingWeekdays = 0;
 
@@ -97,6 +101,8 @@ class TiffinCalculator {
               weekHalf++;
             case TiffinType.skip:
               weekSkip++;
+            case TiffinType.custom:
+              weekCustom++;
           }
         }
         if (isRemainingWeekday(day)) {
@@ -112,6 +118,7 @@ class TiffinCalculator {
           fullCount: weekFull,
           halfCount: weekHalf,
           skipCount: weekSkip,
+          customCount: weekCustom,
           actualSpend: weekActual,
           remainingWeekdays: weekRemainingWeekdays,
           projectedAdditionalSpend: weekRemainingWeekdays * estimatedDailyRate,
@@ -141,6 +148,7 @@ class TiffinCalculator {
       fullCount: fullCount,
       halfCount: halfCount,
       skipCount: skipCount,
+      customCount: customCount,
       weeks: weeks,
       memberBreakdown: memberBreakdown,
     );
@@ -174,6 +182,7 @@ class TiffinCalculator {
       var full = 0;
       var half = 0;
       var skip = 0;
+      var custom = 0;
       var total = 0.0;
       for (final log in logs) {
         total += log.cost;
@@ -184,6 +193,8 @@ class TiffinCalculator {
             half++;
           case TiffinType.skip:
             skip++;
+          case TiffinType.custom:
+            custom++;
         }
       }
       return MemberMonthlyTotal(
@@ -191,6 +202,7 @@ class TiffinCalculator {
         fullCount: full,
         halfCount: half,
         skipCount: skip,
+        customCount: custom,
         totalSpend: total,
       );
     }).toList();

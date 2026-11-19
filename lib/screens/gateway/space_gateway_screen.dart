@@ -16,6 +16,7 @@ class SpaceGatewayScreen extends StatefulWidget {
   const SpaceGatewayScreen({
     super.key,
     required this.profile,
+    this.initialInviteCode,
     required this.onJoinSpace,
     required this.onCreateSpace,
     required this.onSpaceEntered,
@@ -24,6 +25,7 @@ class SpaceGatewayScreen extends StatefulWidget {
   });
 
   final UserProfile profile;
+  final String? initialInviteCode;
   final Future<Space> Function(String inviteCode) onJoinSpace;
   final Future<Space> Function({
     required String name,
@@ -81,6 +83,13 @@ class _SpaceGatewayScreenState extends State<SpaceGatewayScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialInviteCode != null &&
+        widget.initialInviteCode!.trim().isNotEmpty) {
+      final extracted =
+          AppConfig.extractInviteCode(widget.initialInviteCode!) ??
+              widget.initialInviteCode!.trim();
+      _inviteCodeController.text = extracted;
+    }
     AppLogger.nav(
       'Entered SpaceGatewayScreen (cooldownActive=$_isCooldownActive)',
       scope: 'SpaceGatewayScreen',
@@ -461,14 +470,73 @@ class _SpaceGatewayScreenState extends State<SpaceGatewayScreen> {
           TextFormField(
             controller: _inviteCodeController,
             enabled: !isCooling && !_isSubmitting,
-            keyboardType: TextInputType.number,
+            keyboardType: TextInputType.text,
             maxLength: 6,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
+            inputFormatters: [
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                final extracted = AppConfig.extractInviteCode(newValue.text);
+                if (extracted != null && newValue.text.length > 6) {
+                  return TextEditingValue(
+                    text: extracted,
+                    selection:
+                        TextSelection.collapsed(offset: extracted.length),
+                  );
+                }
+                final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+                final truncated =
+                    digits.length > 6 ? digits.substring(0, 6) : digits;
+                return TextEditingValue(
+                  text: truncated,
+                  selection:
+                      TextSelection.collapsed(offset: truncated.length),
+                );
+              }),
+            ],
+            decoration: InputDecoration(
               labelText: '6-Digit Code',
               hintText: '123456',
               counterText: '',
-              prefixIcon: Icon(Icons.key_rounded),
+              prefixIcon: const Icon(Icons.key_rounded),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.content_paste_rounded, size: 20),
+                tooltip: 'Paste invite code or link',
+                onPressed: (!isCooling && !_isSubmitting)
+                    ? () async {
+                        try {
+                          final data =
+                              await Clipboard.getData(Clipboard.kTextPlain);
+                          final text = data?.text;
+                          if (text != null && text.trim().isNotEmpty) {
+                            final code = AppConfig.extractInviteCode(text);
+                            if (code != null) {
+                              setState(() {
+                                _inviteCodeController.text = code;
+                                _errorMessage = null;
+                              });
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Pasted invite code: $code'),
+                                  ),
+                                );
+                              }
+                            } else {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'No 6-digit invite code found in clipboard.',
+                                    ),
+                                    backgroundColor: Color(0xFFB91C1C),
+                                  ),
+                                );
+                              }
+                            }
+                          }
+                        } catch (_) {}
+                      }
+                    : null,
+              ),
             ),
             validator: (value) {
               final text = value?.trim() ?? '';

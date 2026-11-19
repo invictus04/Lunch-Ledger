@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../models/space.dart';
 import '../models/space_member.dart';
+import '../models/space_menu_item.dart';
 import '../models/user_profile.dart';
 import '../utils/app_logger.dart';
 import 'supabase_error_mapper.dart';
@@ -237,6 +238,141 @@ class SpaceService {
           return members;
         },
         describeResult: (m) => '${m.length} members',
+      );
+    } catch (e) {
+      throw SupabaseErrorMapper.map(e);
+    }
+  }
+
+  Future<List<SpaceMenuItem>> fetchMenuItems(
+    String spaceId, {
+    bool onlyActive = true,
+  }) async {
+    try {
+      return await AppLogger.traceAsync(
+        _scope,
+        'fetchMenuItems(spaceId=$spaceId, onlyActive=$onlyActive)',
+        () async {
+          var query =
+              _client.from('space_menu_items').select().eq('space_id', spaceId);
+          if (onlyActive) {
+            query = query.eq('is_active', true);
+          }
+          final rows = await query
+              .order('sort_order', ascending: true)
+              .order('created_at', ascending: true);
+          return rows.map((e) => SpaceMenuItem.fromJson(e)).toList();
+        },
+        describeResult: (items) => '${items.length} items',
+      );
+    } catch (e) {
+      throw SupabaseErrorMapper.map(e);
+    }
+  }
+
+  Future<SpaceMenuItem> createMenuItem({
+    required String spaceId,
+    required String name,
+    required double price,
+    int sortOrder = 0,
+  }) async {
+    try {
+      return await AppLogger.traceAsync(
+        _scope,
+        'createMenuItem(spaceId=$spaceId, name=$name, price=$price)',
+        () async {
+          final row = await _client
+              .from('space_menu_items')
+              .insert({
+                'space_id': spaceId,
+                'name': name.trim(),
+                'price': price,
+                'sort_order': sortOrder,
+                'is_active': true,
+              })
+              .select()
+              .single();
+          return SpaceMenuItem.fromJson(row);
+        },
+        describeResult: (item) => 'id=${item.id}, name=${item.name}',
+      );
+    } catch (e) {
+      throw SupabaseErrorMapper.map(e);
+    }
+  }
+
+  Future<SpaceMenuItem> updateMenuItem({
+    required String itemId,
+    required String name,
+    required double price,
+    bool? isActive,
+    int? sortOrder,
+  }) async {
+    try {
+      return await AppLogger.traceAsync(
+        _scope,
+        'updateMenuItem(itemId=$itemId, name=$name, price=$price)',
+        () async {
+          final updates = <String, dynamic>{
+            'name': name.trim(),
+            'price': price,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          };
+          if (isActive != null) updates['is_active'] = isActive;
+          if (sortOrder != null) updates['sort_order'] = sortOrder;
+
+          final row = await _client
+              .from('space_menu_items')
+              .update(updates)
+              .eq('id', itemId)
+              .select()
+              .single();
+          return SpaceMenuItem.fromJson(row);
+        },
+        describeResult: (item) => 'id=${item.id}, active=${item.isActive}',
+      );
+    } catch (e) {
+      throw SupabaseErrorMapper.map(e);
+    }
+  }
+
+  Future<void> deleteMenuItem(String itemId) async {
+    try {
+      await AppLogger.traceAsync(
+        _scope,
+        'deleteMenuItem(itemId=$itemId)',
+        () async {
+          await _client
+              .from('space_menu_items')
+              .update({
+                'is_active': false,
+                'updated_at': DateTime.now().toUtc().toIso8601String(),
+              })
+              .eq('id', itemId);
+        },
+      );
+    } catch (e) {
+      throw SupabaseErrorMapper.map(e);
+    }
+  }
+
+  Future<void> kickMember({
+    required String spaceId,
+    required String targetUserId,
+  }) async {
+    try {
+      await AppLogger.traceAsync(
+        _scope,
+        'kickMember(spaceId=$spaceId, targetUserId=$targetUserId)',
+        () async {
+          await _client.rpc(
+            'kick_space_member',
+            params: {
+              'p_space_id': spaceId,
+              'p_target_user_id': targetUserId,
+            },
+          );
+        },
       );
     } catch (e) {
       throw SupabaseErrorMapper.map(e);

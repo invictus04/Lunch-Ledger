@@ -5,7 +5,8 @@ import '../utils/app_logger.dart';
 enum TiffinType {
   full('full', 'Full'),
   half('half', 'Half'),
-  skip('skip', 'Skip');
+  skip('skip', 'Skip'),
+  custom('custom', 'Custom');
 
   const TiffinType(this.dbValue, this.label);
 
@@ -35,6 +36,8 @@ class TiffinLog {
     required this.cost,
     required this.createdAt,
     required this.updatedAt,
+    this.menuItemId,
+    this.itemName,
   });
 
   final String id;
@@ -45,8 +48,17 @@ class TiffinLog {
   final double cost;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? menuItemId;
+  final String? itemName;
 
   String get dateKey => AppConfig.formatDateKey(logDate);
+
+  String get displayLabel {
+    if (itemName != null && itemName!.trim().isNotEmpty) {
+      return itemName!.trim();
+    }
+    return type.label;
+  }
 
   factory TiffinLog.fromJson(Map<String, dynamic> json) {
     return AppLogger.parseJson('TiffinLog', json, () {
@@ -63,6 +75,8 @@ class TiffinLog {
         updatedAt: json['updated_at'] != null
             ? DateTime.parse(json['updated_at'] as String).toLocal()
             : DateTime.now(),
+        menuItemId: json['menu_item_id'] as String?,
+        itemName: json['item_name'] as String?,
       );
     });
   }

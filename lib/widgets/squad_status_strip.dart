@@ -12,16 +12,19 @@ class SquadStatusStrip extends StatelessWidget {
     required this.members,
     required this.todayLogsByUser,
     required this.currentUserId,
+    this.onTapMember,
   });
 
   final List<SpaceMember> members;
   final Map<String, TiffinLog> todayLogsByUser;
   final String currentUserId;
+  final void Function(SpaceMember member)? onTapMember;
 
   @override
   Widget build(BuildContext context) {
     var fullCount = 0;
     var halfCount = 0;
+    var customCount = 0;
     var skipCount = 0;
     var pendingCount = 0;
 
@@ -32,6 +35,8 @@ class SquadStatusStrip extends StatelessWidget {
           fullCount++;
         case TiffinType.half:
           halfCount++;
+        case TiffinType.custom:
+          customCount++;
         case TiffinType.skip:
           skipCount++;
         case null:
@@ -69,14 +74,21 @@ class SquadStatusStrip extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _HeadcountChip(
-              label: '$fullCount Full',
-              style: TiffinVisualStyle.of(TiffinType.full),
-            ),
-            _HeadcountChip(
-              label: '$halfCount Half',
-              style: TiffinVisualStyle.of(TiffinType.half),
-            ),
+            if (customCount > 0) ...[
+              _HeadcountChip(
+                label: '${fullCount + halfCount + customCount} Meals',
+                style: TiffinVisualStyle.of(TiffinType.full),
+              ),
+            ] else ...[
+              _HeadcountChip(
+                label: '$fullCount Full',
+                style: TiffinVisualStyle.of(TiffinType.full),
+              ),
+              _HeadcountChip(
+                label: '$halfCount Half',
+                style: TiffinVisualStyle.of(TiffinType.half),
+              ),
+            ],
             _HeadcountChip(
               label: '$skipCount Skip',
               style: TiffinVisualStyle.of(TiffinType.skip),
@@ -108,65 +120,72 @@ class SquadStatusStrip extends StatelessWidget {
               itemBuilder: (context, index) {
                 final member = members[index];
                 final log = todayLogsByUser[member.userId];
-                final style = TiffinVisualStyle.of(log?.type);
+                final style = TiffinVisualStyle.of(
+                  log?.type,
+                  customLabel: log?.displayLabel,
+                );
                 final isSelf = member.userId == currentUserId;
 
-                return Container(
-                  width: 112,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelf ? AppTheme.primary : AppTheme.cardBorder,
-                      width: isSelf ? 1.5 : 1,
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: onTapMember == null ? null : () => onTapMember!(member),
+                  child: Container(
+                    width: 112,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelf ? AppTheme.primary : AppTheme.cardBorder,
+                        width: isSelf ? 1.5 : 1,
+                      ),
                     ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: style.softBg,
-                        child: Text(
-                          member.user.initials,
-                          style: TextStyle(
-                            color: style.color,
-                            fontWeight: FontWeight.w700,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundColor: style.softBg,
+                          child: Text(
+                            member.user.initials,
+                            style: TextStyle(
+                              color: style.color,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          isSelf ? 'You' : member.user.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
                             fontSize: 13,
+                            color: AppTheme.ink,
                           ),
                         ),
-                      ),
-                      Text(
-                        isSelf ? 'You' : member.user.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          color: AppTheme.ink,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: style.softBg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          style.label,
-                          style: TextStyle(
-                            color: style.color,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11.5,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: style.softBg,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            style.label,
+                            style: TextStyle(
+                              color: style.color,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11.5,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },

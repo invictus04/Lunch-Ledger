@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/space.dart';
 import '../../models/space_member.dart';
+import '../../models/space_menu_item.dart';
 import '../../models/tiffin_log.dart';
 import '../../models/user_profile.dart';
 import '../../services/auth_service.dart';
@@ -45,6 +46,7 @@ class _MainShellState extends State<MainShell> {
   late Space _space;
   List<SpaceMember> _members = const [];
   List<TiffinLog> _todayLogs = const [];
+  List<SpaceMenuItem> _menuItems = const [];
   int _dataVersion = 0;
   bool _isSavingLog = false;
   bool _isInitialLoading = true;
@@ -124,22 +126,32 @@ class _MainShellState extends State<MainShell> {
             spaceId: active.space!.id,
             date: DateTime.now(),
           );
+          final menuItemsFuture = widget.spaceService.fetchMenuItems(
+            active.space!.id,
+            onlyActive: false,
+          );
 
-          final results = await Future.wait([membersFuture, todayLogsFuture]);
+          final results = await Future.wait([
+            membersFuture,
+            todayLogsFuture,
+            menuItemsFuture,
+          ]);
           if (!mounted) return;
           final members = results[0] as List<SpaceMember>;
           final todayLogs = results[1] as List<TiffinLog>;
+          final menuItems = results[2] as List<SpaceMenuItem>;
           setState(() {
             _profile = profile;
             _space = active.space!;
             _members = members;
             _todayLogs = todayLogs;
+            _menuItems = menuItems;
             _dataVersion++;
             _isInitialLoading = false;
           });
           AppLogger.info(
             'MainShell',
-            'Workspace synced (members=${members.length}, todayLogs=${todayLogs.length}, dataVersion=$_dataVersion)',
+            'Workspace synced (members=${members.length}, todayLogs=${todayLogs.length}, menuItems=${menuItems.length}, dataVersion=$_dataVersion)',
           );
         },
       );
@@ -157,17 +169,23 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
-  Future<void> _selectTodayType(TiffinType type) async {
+  Future<void> _selectTodayChoice({
+    required TiffinType type,
+    String? menuItemId,
+    String? itemName,
+  }) async {
     setState(() => _isSavingLog = true);
     try {
       final saved = await AppLogger.traceAsync(
         'MainShell',
-        'Select today tiffin choice (${type.name})',
+        'Select today tiffin choice (${itemName ?? type.name})',
         () => widget.tiffinService.upsertDailyLog(
           userId: _profile.id,
           spaceId: _space.id,
           date: DateTime.now(),
           type: type,
+          menuItemId: menuItemId,
+          itemName: itemName,
         ),
       );
       if (!mounted) return;
@@ -182,7 +200,7 @@ class _MainShellState extends State<MainShell> {
     } catch (e, st) {
       AppLogger.error(
         'MainShell',
-        'Failed to save today tiffin choice (${type.name})',
+        'Failed to save today tiffin choice (${itemName ?? type.name})',
         error: e,
         stackTrace: st,
       );
@@ -209,12 +227,35 @@ class _MainShellState extends State<MainShell> {
     final pages = [
       HomeTab(
         space: _space,
+        menuItems: _menuItems,
         currentUserId: _profile.id,
         members: _members,
         todayLogs: _todayLogs,
         isSavingLog: _isSavingLog,
-        onSelectType: _selectTodayType,
+        onSelectChoice: _selectTodayChoice,
         onRefresh: _refreshWorkspaceData,
+        fetchSpaceMonthLogs: (month) =>
+            widget.tiffinService.fetchSpaceMonthLogs(
+          spaceId: _space.id,
+          month: month,
+        ),
+        onLeaderUpdateLog: ({
+          required userId,
+          required date,
+          required type,
+          menuItemId,
+          itemName,
+        }) async {
+          await widget.tiffinService.upsertDailyLog(
+            userId: userId,
+            spaceId: _space.id,
+            date: date,
+            type: type,
+            menuItemId: menuItemId,
+            itemName: itemName,
+          );
+          await _refreshWorkspaceData();
+        },
       ),
       HistoryTab(
         currentUserId: _profile.id,
@@ -241,6 +282,7 @@ class _MainShellState extends State<MainShell> {
         space: _space,
         isLeader: _isLeader,
         members: _members,
+        menuItems: _menuItems,
         onUpdateName: (name) => AppLogger.traceAsync(
           'MainShell',
           'Update profile name',
@@ -272,6 +314,52 @@ class _MainShellState extends State<MainShell> {
             if (mounted) {
               setState(() => _space = updated);
             }
+          },
+        ),
+        onCreateMenuItem: ({required name, required price}) =>
+            AppLogger.traceAsync(
+          'MainShell',
+          'Create menu item ($name, price=$price)',
+          () async {
+            await widget.spaceService.createMenuItem(
+              spaceId: _space.id,
+              name: name,
+              price: price,
+              sortOrder: _menuItems.length + 1,
+            );
+            await _refreshWorkspaceData();
+          },
+        ),
+        onUpdateMenuItem: ({required itemId, required name, required price}) =>
+            AppLogger.traceAsync(
+          'MainShell',
+          'Update menu item ($itemId, name=$name, price=$price)',
+          () async {
+            await widget.spaceService.updateMenuItem(
+              itemId: itemId,
+              name: name,
+              price: price,
+            );
+            await _refreshWorkspaceData();
+          },
+        ),
+        onDeleteMenuItem: (itemId) => AppLogger.traceAsync(
+          'MainShell',
+          'Delete menu item ($itemId)',
+          () async {
+            await widget.spaceService.deleteMenuItem(itemId);
+            await _refreshWorkspaceData();
+          },
+        ),
+        onKickMember: (targetUserId) => AppLogger.traceAsync(
+          'MainShell',
+          'Kick member ($targetUserId)',
+          () async {
+            await widget.spaceService.kickMember(
+              spaceId: _space.id,
+              targetUserId: targetUserId,
+            );
+            await _refreshWorkspaceData();
           },
         ),
         onTransferLeadership: (newLeaderId) => AppLogger.traceAsync(

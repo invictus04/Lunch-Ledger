@@ -49,3 +49,6 @@ app.*.map.json
 
 # Local environment secrets
 .env
+
+FEATURES_PLAN.md
+/supabase/migrations
